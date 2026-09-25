@@ -2,31 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSignalR } from '../hooks/useSignalR';
-import {
-  getTrips,
-  getExceptions,
-  getVehicles,
-  getDrivers,
-  createVehicle,
-  updateVehicle,
-  deleteVehicle,
-  deleteException,
-} from '../api/client';
+import { getTrips, getExceptions, getVehicles, getDrivers, createVehicle, updateVehicle, deleteVehicle, deleteException } from '../api/client';
 import { FleetMap } from '../components/map/FleetMap';
 import { VehicleList } from '../components/dashboard/VehicleList';
 import { VehicleForm } from '../components/dashboard/VehicleForm';
 import { AlertPanel } from '../components/dashboard/AlertPanel';
 import { AlertDetail } from '../components/dashboard/AlertDetail';
-import type {
-  TripDto,
-  LocationBroadcastDto,
-  ExceptionAlertDto,
-  MapMarker,
-  VehicleDto,
-  DriverDto,
-  VehicleInput,
-  VehicleType,
-} from '../types';
+import type { TripDto, LocationBroadcastDto, ExceptionAlertDto, MapMarker, VehicleDto, DriverDto, VehicleInput } from '../types';
+import { isTripInProgress } from '../utils/helpers';
 
 export function DispatcherDashboard() {
   const { token, user, logout } = useAuth();
@@ -44,7 +27,7 @@ export function DispatcherDashboard() {
     setLocations((prev) => {
       const next = new Map(prev);
       const activeTripIds = new Set(
-        ts.filter((trip) => trip.status === 'InProgress').map((trip) => trip.id),
+        ts.filter((trip) => isTripInProgress(trip)).map((trip) => trip.id),
       );
 
       for (const tripId of next.keys()) {
@@ -52,7 +35,7 @@ export function DispatcherDashboard() {
       }
 
       for (const t of ts) {
-        if (t.status === 'InProgress' && t.lastLatitude != null && t.lastLongitude != null) {
+        if (isTripInProgress(t) && t.lastLatitude != null && t.lastLongitude != null) {
           next.set(t.id, {
             tripId: t.id,
             driverId: t.driverId,
@@ -155,7 +138,7 @@ export function DispatcherDashboard() {
       });
     }
 
-    for (const t of trips.filter((trip) => trip.status === 'InProgress')) {
+    for (const t of trips.filter((trip) => isTripInProgress(trip))) {
       if (byKey.has(`trip-${t.id}`)) continue;
 
       const vehicle = vehicles.find((candidate) => candidate.id === t.vehicleId);
@@ -203,24 +186,8 @@ export function DispatcherDashboard() {
 
   const selectedMarker = selectedKey ? markers.find((m) => m.key === selectedKey) : undefined;
 
-  const handleCreateVehicle = async (data: {
-    name: string;
-    licensePlate: string;
-    type: VehicleType;
-    isActive: boolean;
-    driverId?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-  }) => {
-    await createVehicle({
-      name: data.name,
-      licensePlate: data.licensePlate,
-      type: data.type,
-      isActive: data.isActive,
-      driverId: data.driverId,
-      latitude: data.latitude,
-      longitude: data.longitude,
-    });
+  const handleCreateVehicle = async (data: VehicleInput) => {
+    await createVehicle(data);
     setShowVehicleForm(false);
     await Promise.all([reloadVehicles(), reloadTrips(), reloadDrivers()]);
   };
@@ -265,13 +232,12 @@ export function DispatcherDashboard() {
           <div className="logo-mark">FP</div>
           <div>
             <h1>FleetPulse</h1>
-            <span className="header-subtitle">Command center</span>
           </div>
         </div>
         <div className="header-right">
           <div className="operations-summary">
             <span className="live-indicator"><i /> Live</span>
-            <span>{trips.filter((trip) => trip.status === 'InProgress').length} active trips</span>
+            <span>{trips.filter((trip) => isTripInProgress(trip)).length} active trips</span>
             <span>{alerts.length} alerts</span>
           </div>
           {user?.role === 'Admin' && (
@@ -296,7 +262,7 @@ export function DispatcherDashboard() {
             onSelectVehicle={(key) => {
               const vehicleId = key.replace('veh-', '');
               const activeTrip = trips.find(
-                (trip) => trip.status === 'InProgress' && trip.vehicleId === vehicleId,
+                (trip) => isTripInProgress(trip) && trip.vehicleId === vehicleId,
               );
               setSelectedKey(activeTrip ? `trip-${activeTrip.id}` : key);
             }}

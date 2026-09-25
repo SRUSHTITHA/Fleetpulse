@@ -46,6 +46,8 @@ public class LocationService : ILocationService
     public async Task<ReportLocationResponse> ReportLocationAsync(Guid driverUserId, ReportLocationRequest request, CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
+        // Drivers can reconnect mid-trip and resend nearly identical pings; this keeps
+        // stale retries from creating a false trail while still accepting genuinely new fixes.
         if (_lastAcceptedByTrip.TryGetValue(request.TripId, out var lastAccepted) && now - lastAccepted < ThrottleInterval)
             return Failed(LocationReportStatus.Throttled, "Location report rejected — please wait at least 2 seconds between reports.");
 
@@ -73,6 +75,8 @@ public class LocationService : ILocationService
         await _locations.AddAsync(location, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // Store the accepted timestamp only after the insert succeeds so a retry that was
+        // rejected by the database does not permanently suppress valid follow-up reports.
         _lastAcceptedByTrip[trip.Id] = location.RecordedAt;
         SweepStaleThrottleEntries(now);
 

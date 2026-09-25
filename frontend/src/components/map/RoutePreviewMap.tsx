@@ -91,7 +91,7 @@ export function RoutePreviewMap({
         ) : status === 'not-found' ? (
           <span className="error2">● Could not find that address. Try a city or a fuller address.</span>
         ) : dest && origin ? (
-          <span className="online">● Route planned with OSRM on Google Maps</span>
+          <span className="online">● Route planned </span>
         ) : dest ? (
           <span className="offline">● Destination found — now enter an origin or allow location for the route.</span>
         ) : origin ? (

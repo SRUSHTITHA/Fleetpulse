@@ -33,15 +33,8 @@ public class VehicleService : IVehicleService
 
     public async Task<VehicleDto?> CreateAsync(CreateVehicleRequest request, CancellationToken cancellationToken = default)
     {
-        var vehicle = new Vehicle
-        {
-            Name = request.Name.Trim(),
-            LicensePlate = request.LicensePlate.Trim().ToUpperInvariant(),
-            Type = request.Type,
-            IsActive = request.IsActive,
-            Latitude = request.Latitude,
-            Longitude = request.Longitude
-        };
+        var vehicle = new Vehicle();
+        ApplyDetails(vehicle, request.Name, request.LicensePlate, request.Type, request.IsActive, request.Latitude, request.Longitude);
 
         if (request.DriverId is not null)
         {
@@ -62,12 +55,7 @@ public class VehicleService : IVehicleService
         if (vehicle is null)
             return null;
 
-        vehicle.Name = request.Name.Trim();
-        vehicle.LicensePlate = request.LicensePlate.Trim().ToUpperInvariant();
-        vehicle.Type = request.Type;
-        vehicle.IsActive = request.IsActive;
-        vehicle.Latitude = request.Latitude;
-        vehicle.Longitude = request.Longitude;
+        ApplyDetails(vehicle, request.Name, request.LicensePlate, request.Type, request.IsActive, request.Latitude, request.Longitude);
 
         if (!vehicle.IsActive)
             await CancelActiveTripsAsync(vehicleId, cancellationToken);
@@ -118,8 +106,8 @@ public class VehicleService : IVehicleService
         var vehicles = await _vehicles.GetAllAsync(cancellationToken);
         var vehicleById = vehicles.ToDictionary(v => v.Id);
 
-        var drivers = (await _users.GetAllAsync(includeDriver: true, cancellationToken))
-            .Where(u => u.Driver is not null)
+        var users = await GetUsersWithDriversAsync(cancellationToken);
+        var drivers = users
             .Select(u => new DriverDto
             {
                 Id = u.Driver!.Id,
@@ -138,14 +126,35 @@ public class VehicleService : IVehicleService
         return drivers;
     }
 
+    private static void ApplyDetails(
+        Vehicle vehicle,
+        string name,
+        string licensePlate,
+        VehicleType type,
+        bool isActive,
+        decimal? latitude,
+        decimal? longitude)
+    {
+        vehicle.Name = name.Trim();
+        vehicle.LicensePlate = licensePlate.Trim().ToUpperInvariant();
+        vehicle.Type = type;
+        vehicle.IsActive = isActive;
+        vehicle.Latitude = latitude;
+        vehicle.Longitude = longitude;
+    }
+
+    private async Task<List<User>> GetUsersWithDriversAsync(CancellationToken cancellationToken)
+        => (await _users.GetAllAsync(includeDriver: true, cancellationToken))
+            .Where(u => u.Driver is not null)
+            .ToList();
+
     /// <summary>
     /// Assigns <paramref name="driverId"/> to <paramref name="vehicle"/>, releasing the vehicle
     /// from any other driver and the driver from any other vehicle (no double-booking).
     /// </summary>
     private async Task<bool> TryAssignDriverAsync(Vehicle vehicle, Guid driverId, CancellationToken cancellationToken)
     {
-        var drivers = (await _users.GetAllAsync(includeDriver: true, cancellationToken))
-            .Where(u => u.Driver is not null)
+        var drivers = (await GetUsersWithDriversAsync(cancellationToken))
             .Select(u => u.Driver!)
             .ToList();
 
@@ -153,6 +162,8 @@ public class VehicleService : IVehicleService
         if (target is null || !target.IsActive)
             return false;
 
+        // A vehicle can have only one active driver, and a driver can only be assigned to one
+        // vehicle at a time. Clear the old pairing before moving the target over.
         foreach (var driver in drivers.Where(d => d.VehicleId == vehicle.Id))
             driver.VehicleId = null;
         if (target.VehicleId != vehicle.Id)
@@ -163,8 +174,7 @@ public class VehicleService : IVehicleService
 
     private async Task UnassignVehicleDriversAsync(Guid vehicleId, CancellationToken cancellationToken)
     {
-        var drivers = (await _users.GetAllAsync(includeDriver: true, cancellationToken))
-            .Where(u => u.Driver is not null)
+        var drivers = (await GetUsersWithDriversAsync(cancellationToken))
             .Select(u => u.Driver!)
             .Where(d => d.VehicleId == vehicleId)
             .ToList();

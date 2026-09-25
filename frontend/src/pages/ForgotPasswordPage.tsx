@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import { requestPasswordReset } from '../api/client';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import {
+  getApiErrorMessage,
+  isApiErrorStatus,
+  isValidEmail,
+  normalizeEmail,
+} from '../utils/helpers';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -15,20 +18,22 @@ export function ForgotPasswordPage() {
     e.preventDefault();
     setError('');
     setMessage('');
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!EMAIL_RE.test(email.trim())) {
+    if (!isValidEmail(normalizedEmail)) {
       setError('Please enter a valid email address.');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await requestPasswordReset(email.trim());
+      const res = await requestPasswordReset(normalizedEmail);
       setMessage(res.message || 'If that email is registered, a password reset link has been sent.');
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (axios.isAxiosError(err) && err.response?.status === 503) {
+      const message = getApiErrorMessage(err, '');
+      if (message) {
+        setError(message);
+      } else if (isApiErrorStatus(err, 503)) {
         setError('Password reset is not configured on this server yet.');
       } else {
         setError('Something went wrong. Please try again.');

@@ -18,12 +18,7 @@ public class VehicleRepository : IVehicleRepository
         => await _db.Vehicles.SingleOrDefaultAsync(v => v.Id == id, cancellationToken);
 
     public async Task<Vehicle?> GetByIdWithDetailsAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _db.Vehicles
-            .Include(v => v.Drivers)
-                .ThenInclude(d => d.User)
-            .Include(v => v.Drivers)
-                .ThenInclude(d => d.Trips)
-                .ThenInclude(t => t.Locations)
+        => await WithDetails(_db.Vehicles)
             .SingleOrDefaultAsync(v => v.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<Vehicle>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -32,13 +27,8 @@ public class VehicleRepository : IVehicleRepository
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Vehicle>> GetAllWithDetailsAsync(CancellationToken cancellationToken = default)
-        => await _db.Vehicles
+        => await WithDetails(_db.Vehicles)
             .OrderBy(v => v.Name)
-            .Include(v => v.Drivers)
-                .ThenInclude(d => d.User)
-            .Include(v => v.Drivers)
-                .ThenInclude(d => d.Trips)
-                .ThenInclude(t => t.Locations)
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Vehicle>> GetActiveAsync(CancellationToken cancellationToken = default)
@@ -57,4 +47,12 @@ public class VehicleRepository : IVehicleRepository
         _db.Vehicles.Remove(vehicle);
         return Task.CompletedTask;
     }
+
+    private static IQueryable<Vehicle> WithDetails(IQueryable<Vehicle> query)
+        => query
+            .Include(v => v.Drivers)
+                .ThenInclude(d => d.User)
+            .Include(v => v.Drivers)
+                .ThenInclude(d => d.Trips)
+                .ThenInclude(t => t.Locations);
 }

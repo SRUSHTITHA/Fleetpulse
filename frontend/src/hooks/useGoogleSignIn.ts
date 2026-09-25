@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getAuthProviders, googleLogin } from '../api/client';
+import { getHomeRouteForUser } from '../utils/helpers';
 
 function loadGsiScript(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -45,7 +46,7 @@ export function useGoogleSignIn({ onError }: UseGoogleSignInOptions = {}) {
     try {
       const res = await googleLogin({ idToken: credential });
       setAuth(res.token, res.user);
-      navigate(res.user.role === 'Driver' ? '/driver' : '/');
+      navigate(getHomeRouteForUser(res.user));
     } catch {
       onErrorRef.current?.('Google sign-in failed. Please try again.');
     }

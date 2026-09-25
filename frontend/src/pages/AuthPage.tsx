@@ -5,6 +5,12 @@ import { login as apiLogin, signUp } from '../api/client';
 import { useGoogleSignIn } from '../hooks/useGoogleSignIn';
 import { GoogleSignInSection } from '../components/auth/GoogleSignInSection';
 import { PasswordField } from '../components/auth/PasswordField';
+import {
+  getHomeRouteForUser,
+  isValidEmail,
+  isValidPassword,
+  normalizeEmail,
+} from '../utils/helpers';
 
 type AuthMode = 'login' | 'signup';
 
@@ -21,18 +27,17 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
   const isSignUp = mode === 'signup';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const normalizedEmail = normalizeEmail(email);
 
-    if (isSignUp && password.length < 8) {
+    if (isSignUp && !isValidPassword(password)) {
       setError('Password must be at least 8 characters.');
       return;
     }
 
-    if (!EMAIL_RE.test(email.trim())) {
+    if (!isValidEmail(normalizedEmail)) {
       setError('Please enter a valid email address.');
       return;
     }
@@ -41,14 +46,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     try {
       const res = isSignUp
         ? await signUp({
-            email,
+            email: normalizedEmail,
             password,
             fullName,
             licenseNumber: licenseNumber.trim() || undefined,
           })
-        : await apiLogin({ email, password });
+        : await apiLogin({ email: normalizedEmail, password });
       setAuth(res.token, res.user);
-      navigate(isSignUp ? '/driver' : res.user.role === 'Driver' ? '/driver' : '/');
+      navigate(getHomeRouteForUser(res.user));
     } catch {
       setError(isSignUp ? 'Sign up failed. That email may already be registered.' : 'Invalid email or password.');
     } finally {
@@ -88,7 +93,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder={isSignUp ? 'you@example.com' : 'dispatcher@fleetpulse.com'}
+              placeholder= "you@example.com"
               required
               autoFocus={!isSignUp}
               autoComplete="username"

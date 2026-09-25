@@ -12,43 +12,31 @@ interface VehicleListProps {
   onDeleteVehicle: (id: string) => void;
 }
 
-export function VehicleList({
-  vehicles,
-  drivers,
-  selectedKey,
-  onSelectVehicle,
-  onAddVehicle,
-  onUpdateVehicle,
-  onDeleteVehicle,
-}: VehicleListProps) {
-  const [showInactive, setShowInactive] = useState(false);
+function toVehicleInput(vehicle: VehicleDto, overrides: Partial<VehicleInput> = {}): VehicleInput {
+  return {
+    name: vehicle.name,
+    licensePlate: vehicle.licensePlate,
+    type: vehicle.type,
+    isActive: vehicle.isActive,
+    driverId: vehicle.assignedDriverId ?? null,
+    latitude: vehicle.latitude ?? null,
+    longitude: vehicle.longitude ?? null,
+    ...overrides,
+  };
+}
 
+export function VehicleList({ vehicles, drivers, selectedKey, onSelectVehicle, onAddVehicle, onUpdateVehicle, onDeleteVehicle }: VehicleListProps) {
+  const [showInactive, setShowInactive] = useState(false);
   const activeCount = vehicles.filter((v) => v.isActive).length;
   const visible = showInactive ? vehicles : vehicles.filter((v) => v.isActive);
 
   const handleAssign = async (vehicle: VehicleDto, driverId: string) => {
     if (driverId === (vehicle.assignedDriverId ?? '')) return;
-    await onUpdateVehicle(vehicle.id, {
-      name: vehicle.name,
-      licensePlate: vehicle.licensePlate,
-      type: vehicle.type,
-      isActive: vehicle.isActive,
-      driverId: driverId || null,
-      latitude: vehicle.latitude ?? null,
-      longitude: vehicle.longitude ?? null,
-    });
+    await onUpdateVehicle(vehicle.id, toVehicleInput(vehicle, { driverId: driverId || null }));
   };
 
   const handleToggleActive = async (vehicle: VehicleDto) => {
-    await onUpdateVehicle(vehicle.id, {
-      name: vehicle.name,
-      licensePlate: vehicle.licensePlate,
-      type: vehicle.type,
-      isActive: !vehicle.isActive,
-      driverId: vehicle.assignedDriverId ?? null,
-      latitude: vehicle.latitude ?? null,
-      longitude: vehicle.longitude ?? null,
-    });
+    await onUpdateVehicle(vehicle.id, toVehicleInput(vehicle, { isActive: !vehicle.isActive }));
   };
 
   return (
@@ -144,11 +132,7 @@ export function VehicleList({
                   title="Delete vehicle"
                   aria-label={`Delete ${vehicle.name}`}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M3 6h18" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
+                  x
                 </button>
                 <button
                   className={`toggle ${vehicle.isActive ? 'on' : 'off'}`}

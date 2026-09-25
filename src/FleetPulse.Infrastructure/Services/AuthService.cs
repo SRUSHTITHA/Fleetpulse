@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using FleetPulse.Application.DTOs.Auth;
+using FleetPulse.Application.Common;
 using FleetPulse.Application.Interfaces;
 using FleetPulse.Application.Interfaces.Repositories;
 using FleetPulse.Domain.Entities;
@@ -68,7 +69,7 @@ public class AuthService : IAuthService
         {
             user = new User
             {
-                Email = identity.Email.Trim().ToLower(),
+                Email = EmailNormalizer.Normalize(identity.Email),
                 FullName = string.IsNullOrWhiteSpace(identity.FullName) ? identity.Email : identity.FullName,
                 Role = UserRole.Driver,
                 // A random BCrypt hash so the password-login path always rejects; this
@@ -89,8 +90,8 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse?> SignUpAsync(SignUpRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email) ||
-            string.IsNullOrWhiteSpace(request.Password) ||
+        if (!EmailNormalizer.IsValid(request.Email) ||
+            !AuthPolicy.IsValidPassword(request.Password) ||
             string.IsNullOrWhiteSpace(request.FullName))
             return null;
 
@@ -99,7 +100,7 @@ public class AuthService : IAuthService
 
         var user = new User
         {
-            Email = request.Email.Trim().ToLowerInvariant(),
+            Email = EmailNormalizer.Normalize(request.Email),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FullName = request.FullName.Trim(),
             Role = UserRole.Driver
@@ -121,8 +122,8 @@ public class AuthService : IAuthService
 
     public async Task<bool> RequestPasswordResetAsync(string email, CancellationToken cancellationToken = default)
     {
-        var normalized = (email ?? string.Empty).Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(normalized) || !IsValidEmail(normalized))
+        var normalized = EmailNormalizer.Normalize(email);
+        if (!EmailNormalizer.IsValid(normalized))
             return false;
 
         var user = await _users.GetByEmailAsync(normalized, cancellationToken: cancellationToken);
@@ -151,11 +152,10 @@ public class AuthService : IAuthService
 
     public async Task<bool> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken cancellationToken = default)
     {
-        var normalized = (email ?? string.Empty).Trim().ToLowerInvariant();
+        var normalized = EmailNormalizer.Normalize(email);
         if (string.IsNullOrWhiteSpace(normalized) ||
             string.IsNullOrWhiteSpace(token) ||
-            string.IsNullOrWhiteSpace(newPassword) ||
-            newPassword.Length < 8)
+            !AuthPolicy.IsValidPassword(newPassword))
             return false;
 
         if (!ValidatePasswordResetToken(normalized, token))
@@ -233,9 +233,6 @@ public class AuthService : IAuthService
         ExpiresAt = DateTime.UtcNow.AddMinutes(_jwt.ExpiryMinutes),
         User = MapUser(user)
     };
-
-    public static bool IsValidEmail(string email) =>
-        email.Length <= 254 && System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
 
     private string CreatePasswordResetToken(string email)
         => CreatePasswordResetToken(email, DateTime.UtcNow.AddMinutes(ResetTokenLifetimeMinutes));

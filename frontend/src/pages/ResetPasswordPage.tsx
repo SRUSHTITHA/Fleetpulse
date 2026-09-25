@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import { resetPassword } from '../api/client';
+import { getApiErrorMessage, isValidPassword } from '../utils/helpers';
 import { PasswordField } from '../components/auth/PasswordField';
 
 export function ResetPasswordPage() {
@@ -21,7 +21,7 @@ export function ResetPasswordPage() {
     setError('');
     setMessage('');
 
-    if (password.length < 8) {
+    if (!isValidPassword(password)) {
       setError('Password must be at least 8 characters.');
       return;
     }
@@ -35,11 +35,8 @@ export function ResetPasswordPage() {
       const res = await resetPassword({ email, token, newPassword: password });
       setMessage(res.message || 'Your password has been reset. You can sign in now.');
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Something went wrong. Please try again.');
-      }
+      const message = getApiErrorMessage(err, '');
+      setError(message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

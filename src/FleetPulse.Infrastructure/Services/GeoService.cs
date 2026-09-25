@@ -26,8 +26,6 @@ public class GeoService : IGeoService
         _maps = maps.Value;
         _routing = routing.Value;
         _logger = logger;
-        if (_http.DefaultRequestHeaders.UserAgent.Count == 0)
-            _http.DefaultRequestHeaders.UserAgent.ParseAdd("FleetPulse/1.0 (fleet tracking)");
     }
 
     public async Task<GeocodeResultDto?> GeocodeAsync(string query, CancellationToken cancellationToken = default)
@@ -110,6 +108,10 @@ public class GeoService : IGeoService
                 DisplayName = first.GetProperty("formatted_address").GetString()
             };
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Google Geocoding failed for {Query}.", query);
@@ -142,6 +144,10 @@ public class GeoService : IGeoService
                 Longitude = lng,
                 DisplayName = first.DisplayName
             };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -182,6 +188,10 @@ public class GeoService : IGeoService
                 Longitude = coordinates[0],
                 DisplayName = displayName
             };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -226,6 +236,10 @@ public class GeoService : IGeoService
                     .ToList()
             };
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Google Directions failed.");
@@ -265,6 +279,10 @@ public class GeoService : IGeoService
             }
 
             return new RouteResultDto { Points = points };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

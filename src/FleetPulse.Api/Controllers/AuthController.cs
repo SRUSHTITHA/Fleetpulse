@@ -1,6 +1,6 @@
 using FleetPulse.Application.DTOs.Auth;
+using FleetPulse.Application.Common;
 using FleetPulse.Application.Interfaces;
-using FleetPulse.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -94,8 +94,6 @@ public class AuthController : ApiControllerBase
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Password reset is not configured. Please contact support." });
 
         await _authService.RequestPasswordResetAsync(request.Email);
-
-        // Always respond the same way so attackers cannot tell which emails are registered.
         return Ok(new { message = "If that email is registered, a password reset link has been sent." });
     }
 
@@ -120,7 +118,7 @@ public class AuthController : ApiControllerBase
         var result = await _authService.SignUpAsync(request);
         if (result is null)
         {
-            if (!AuthService.IsValidEmail(request.Email) || request.Password.Length < 8)
+            if (!EmailNormalizer.IsValid(request.Email) || !AuthPolicy.IsValidPassword(request.Password))
                 return BadRequest(new { message = "Please enter a valid email address and a password of at least 8 characters." });
             return Conflict(new { message = "Sign up failed — that email may already be registered." });
         }

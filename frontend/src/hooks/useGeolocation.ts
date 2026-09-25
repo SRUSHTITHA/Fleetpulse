@@ -82,9 +82,6 @@ export function useGeolocation({ enabled, intervalMs = DEFAULT_INTERVAL }: Optio
       return;
     }
 
-    // A user gesture can re-open the browser prompt when the state is still
-    // "prompt". If it is already "denied", this call fails immediately until
-    // they change the site setting, then it succeeds on the next try.
     navigator.geolocation.getCurrentPosition(onSuccess, onError, {
       enableHighAccuracy: true,
       maximumAge: 0,

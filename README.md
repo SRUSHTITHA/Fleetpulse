@@ -22,12 +22,9 @@ continuously monitors every active trip and **detects problems automatically**.
 Three kinds of users:
 
 | Role | What they can do |
-| --- | --- |
 | **Driver** | Start/end trips, share GPS location every ~30 s, see their own trip |
 | **Dispatcher** | Live map of the whole fleet, real-time alert feed, manage vehicles |
 | **Admin** | Everything a dispatcher can do, plus settings, rules, and user roles |
-
----
 
 ## Features
 
@@ -42,15 +39,10 @@ Three kinds of users:
 ### The four detection rules
 
 | Rule | Fires when |
-| --- | --- |
 | **Stop Too Long** | Vehicle hasn't moved more than ~50 m for X minutes |
 | **Delivery Trending Late** | Much more time used than route progress (e.g. 50 % of the time gone, only 20 % of the trip done) |
 | **Route Deviation** | Vehicle is more than X meters off the straight line between start and finish |
 | **Speed Anomaly** | Vehicle drives faster than X km/h |
-
-All thresholds are configurable by an Admin from the settings screen.
-
----
 
 ## Architecture (the basics)
 
@@ -80,8 +72,6 @@ PostgreSQL 16 ── all data: users, vehicles, trips, GPS history, alerts, rule
 3. A background engine re-checks every active trip every 30 s so quiet drivers aren't missed.
 4. Detected problems appear in the dispatcher's alert feed in real time.
 
----
-
 ## Tech stack
 
 | Layer | Technology |
@@ -89,12 +79,8 @@ PostgreSQL 16 ── all data: users, vehicles, trips, GPS history, alerts, rule
 | Frontend | React 19, Vite, TypeScript, React-Leaflet, SignalR client |
 | Backend | .NET 8 Web API, SignalR, EF Core |
 | Database | PostgreSQL 16 (Npgsql) |
-| Auth | JWT Bearer + BCrypt (optional Google Identity sign-in) |
+| Auth | JWT Bearer + BCrypt
 | Infra | Docker Compose (web/nginx + api + db + self-hosted OSRM router) |
-| Tests | xUnit + in-memory fakes (backend) |
-
----
-
 ## Getting started
 
 **Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (free).
@@ -107,11 +93,3 @@ docker compose up -d --build
 # 2. Open the app
 #
 ```
-
-The first start takes a few minutes (it downloads images, compiles the code, and builds the
-self-hosted routing graph). After that, sign in with a demo account — a delivery van is
-already on the map with two live alerts, so you can see the idea immediately.
-
-> On a fresh database, FleetPulse seeds demo users, vehicles, and one in-progress trip with
-> a real parked-vehicle trail — so the dispatcher dashboard shows activity on first load.
-
