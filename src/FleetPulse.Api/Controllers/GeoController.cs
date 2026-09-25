@@ -11,7 +11,6 @@ namespace FleetPulse.Api.Controllers;
 public class GeoController : ControllerBase
 {
     private readonly IGeoService _geo;
-
     public GeoController(IGeoService geo)
     {
         _geo = geo;

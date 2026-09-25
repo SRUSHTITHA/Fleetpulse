@@ -19,17 +19,11 @@ public class TripRepository : ITripRepository
         => await _db.Trips.SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
 
     public async Task<Trip?> GetByIdWithDetailsAsync(Guid id, CancellationToken cancellationToken = default)
-        => await _db.Trips
-            .Include(t => t.Driver).ThenInclude(d => d.User)
-            .Include(t => t.Vehicle)
-            .Include(t => t.Locations.OrderByDescending(l => l.RecordedAt).Take(1))
+        => await WithDetails(_db.Trips)
             .SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
 
     public async Task<Trip?> GetActiveByDriverAsync(Guid driverId, CancellationToken cancellationToken = default)
-        => await _db.Trips
-            .Include(t => t.Driver).ThenInclude(d => d.User)
-            .Include(t => t.Vehicle)
-            .Include(t => t.Locations.OrderByDescending(l => l.RecordedAt).Take(1))
+        => await WithDetails(_db.Trips)
             .Where(t => t.DriverId == driverId && t.Status == TripStatus.InProgress && t.Vehicle.IsActive)
             .OrderByDescending(t => t.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
@@ -41,10 +35,7 @@ public class TripRepository : ITripRepository
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Trip>> GetAllWithDetailsAsync(CancellationToken cancellationToken = default)
-        => await _db.Trips
-            .Include(t => t.Driver).ThenInclude(d => d.User)
-            .Include(t => t.Vehicle)
-            .Include(t => t.Locations.OrderByDescending(l => l.RecordedAt).Take(1))
+        => await WithDetails(_db.Trips)
             .OrderBy(t => t.CreatedAt)
             .ToListAsync(cancellationToken);
 
@@ -55,4 +46,10 @@ public class TripRepository : ITripRepository
     {
         await _db.Trips.AddAsync(trip, cancellationToken);
     }
+
+    private static IQueryable<Trip> WithDetails(IQueryable<Trip> query)
+        => query
+            .Include(t => t.Driver).ThenInclude(d => d.User)
+            .Include(t => t.Vehicle)
+            .Include(t => t.Locations.OrderByDescending(l => l.RecordedAt).Take(1));
 }

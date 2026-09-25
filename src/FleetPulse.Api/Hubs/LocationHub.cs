@@ -11,8 +11,7 @@ public class LocationHub : Hub
 
     public override async Task OnConnectedAsync()
     {
-        var role = Context.User?.FindFirst(ClaimTypes.Role)?.Value;
-        if (role is "Admin" or "Dispatcher")
+        if (IsOperator)
             await Groups.AddToGroupAsync(Context.ConnectionId, OpsGroup);
 
         await base.OnConnectedAsync();
@@ -20,10 +19,12 @@ public class LocationHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var role = Context.User?.FindFirst(ClaimTypes.Role)?.Value;
-        if (role is "Admin" or "Dispatcher")
+        if (IsOperator)
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, OpsGroup);
 
         await base.OnDisconnectedAsync(exception);
     }
+
+    private bool IsOperator
+        => Context.User?.FindFirst(ClaimTypes.Role)?.Value is "Admin" or "Dispatcher";
 }

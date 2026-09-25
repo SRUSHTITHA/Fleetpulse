@@ -1,3 +1,4 @@
+using FleetPulse.Application.Common;
 using FleetPulse.Application.Interfaces.Repositories;
 using FleetPulse.Domain.Entities;
 using FleetPulse.Infrastructure.Data;
@@ -27,11 +28,11 @@ public class UserRepository : IUserRepository
         var query = _db.Users.AsQueryable();
         if (includeDriver)
             query = query.Include(u => u.Driver);
-        return await query.SingleOrDefaultAsync(u => u.Email.ToLower() == Normalize(email), cancellationToken);
+        return await query.SingleOrDefaultAsync(u => u.Email.ToLower() == EmailNormalizer.Normalize(email), cancellationToken);
     }
 
     public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default)
-        => await _db.Users.AnyAsync(u => u.Email.ToLower() == Normalize(email), cancellationToken);
+        => await _db.Users.AnyAsync(u => u.Email.ToLower() == EmailNormalizer.Normalize(email), cancellationToken);
 
     public async Task<IReadOnlyList<User>> GetAllAsync(bool includeDriver = false, CancellationToken cancellationToken = default)
     {
@@ -46,5 +47,4 @@ public class UserRepository : IUserRepository
         await _db.Users.AddAsync(user, cancellationToken);
     }
 
-    private static string Normalize(string email) => (email ?? string.Empty).Trim().ToLower();
 }

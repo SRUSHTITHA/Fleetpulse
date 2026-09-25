@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, Polyline, CircleMarker, Tooltip, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { MapMarker, TripDto } from '../../types';
 import { getDrivingRoute } from '../../api/client';
+import { isTripInProgress } from '../../utils/helpers';
 
 function createVehicleIcon(isSelected: boolean): L.DivIcon {
   return L.divIcon({
@@ -25,7 +26,7 @@ function MapUpdater({ markers, trips, selectedKey }: MapUpdaterProps) {
   const lastBoundsKey = useRef('');
 
   useEffect(() => {
-    const activeTrips = trips.filter((trip) => trip.status === 'InProgress');
+    const activeTrips = trips.filter((trip) => isTripInProgress(trip));
     if (!markers.length && !activeTrips.length) return;
 
     const boundsKey = [
@@ -78,7 +79,7 @@ interface FleetMapProps {
 }
 
 export function FleetMap({ markers, trips, selectedKey, onSelectMarker }: FleetMapProps) {
-  const activeTrips = trips.filter((trip) => trip.status === 'InProgress');
+  const activeTrips = useMemo(() => trips.filter((trip) => isTripInProgress(trip)), [trips]);
   const [roadRoutes, setRoadRoutes] = useState<Record<string, [number, number][]>>({});
 
   useEffect(() => {
@@ -91,6 +92,7 @@ export function FleetMap({ markers, trips, selectedKey, onSelectMarker }: FleetM
             const route = await getDrivingRoute(
               { lat: trip.originLat, lng: trip.originLng },
               { lat: trip.destLat, lng: trip.destLng },
+              controller.signal,
             );
             if (route.length < 2) return [trip.id, null] as const;
             return [trip.id, route] as const;
@@ -106,7 +108,7 @@ export function FleetMap({ markers, trips, selectedKey, onSelectMarker }: FleetM
 
     void loadRoadRoutes();
     return () => controller.abort();
-  }, [trips]);
+  }, [activeTrips]);
 
   return (
     <MapContainer

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
-import { geocode } from '../../api/client';
+import { geocode, getDrivingRoute } from '../../api/client';
 import type { RoutePoint } from '../../types';
 
 interface GoogleRouteMapProps {
@@ -8,15 +8,6 @@ interface GoogleRouteMapProps {
   destination: RoutePoint | string | null;
   destinationLabel?: string;
   onDestinationResolved?: (coords: RoutePoint) => void;
-}
-
-interface OsrmRouteResponse {
-  code: string;
-  routes?: Array<{
-    geometry?: {
-      coordinates: [number, number][];
-    };
-  }>;
 }
 
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
@@ -28,9 +19,12 @@ export function GoogleRouteMap({ origin, destination, destinationLabel, onDestin
   const destinationResolvedRef = useRef(onDestinationResolved);
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const originLat = origin?.lat ?? null;
+  const originLng = origin?.lng ?? null;
   const destinationLat = typeof destination === 'string' ? null : destination?.lat ?? null;
   const destinationLng = typeof destination === 'string' ? null : destination?.lng ?? null;
   const destinationQuery = typeof destination === 'string' ? destination : null;
+  const hasDestination = Boolean(destinationQuery) || (destinationLat !== null && destinationLng !== null);
   const [resolvedDestination, setResolvedDestination] = useState<RoutePoint | null>(
     typeof destination === 'string' ? null : destination,
   );
@@ -40,9 +34,10 @@ export function GoogleRouteMap({ origin, destination, destinationLabel, onDestin
   }, [onDestinationResolved]);
 
   useEffect(() => {
-    if (!origin || !destination || !mapElement.current || !googleMapsApiKey) return;
+    if (originLat === null || originLng === null || !hasDestination || !mapElement.current || !googleMapsApiKey) return;
 
     let cancelled = false;
+    const controller = new AbortController();
     setStatus('loading');
     setErrorMessage('');
 
@@ -50,8 +45,9 @@ export function GoogleRouteMap({ origin, destination, destinationLabel, onDestin
     void importLibrary('maps').then(async (mapsLibrary) => {
       if (cancelled || !mapElement.current) return;
 
+      const originCoords = { lat: originLat, lng: originLng };
       const map = mapRef.current ?? new mapsLibrary.Map(mapElement.current, {
-        center: origin,
+        center: originCoords,
         zoom: 12,
         mapTypeControl: false,
         streetViewControl: false,
@@ -59,35 +55,31 @@ export function GoogleRouteMap({ origin, destination, destinationLabel, onDestin
       });
       mapRef.current = map;
 
-      const destinationCoords = typeof destination === 'string'
-        ? await geocode(destination)
-        : destination;
-      if (cancelled) return;
+      const destinationValue = destinationQuery ?? {
+        lat: destinationLat!,
+        lng: destinationLng!,
+      };
+      const destinationCoords = typeof destinationValue === 'string'
+        ? await geocode(destinationValue)
+        : destinationValue;
+      if (cancelled || controller.signal.aborted) return;
       if (!destinationCoords) {
         setErrorMessage('Could not find that destination. Try a fuller address.');
         setStatus('error');
         return;
       }
 
-      const routeUrl = new URL(
-        `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destinationCoords.lng},${destinationCoords.lat}`,
-      );
-      routeUrl.searchParams.set('overview', 'full');
-      routeUrl.searchParams.set('geometries', 'geojson');
-      const response = await fetch(routeUrl);
-      const routeData = (await response.json()) as OsrmRouteResponse;
-      if (cancelled) return;
-
-      const coordinates = routeData.routes?.[0]?.geometry?.coordinates;
-      if (!response.ok || routeData.code !== 'Ok' || !coordinates?.length) {
-        setErrorMessage('OSRM returned no driving route. Try a fuller destination address.');
+      const coordinates = await getDrivingRoute(originCoords, destinationCoords, controller.signal);
+      if (cancelled || controller.signal.aborted) return;
+      if (coordinates.length < 2) {
+        setErrorMessage('The routing service returned no driving route. Try a fuller destination address.');
         setStatus('error');
         return;
       }
 
       routePolylineRef.current?.setMap(null);
       routePolylineRef.current = new mapsLibrary.Polyline({
-        path: coordinates.map(([lng, lat]) => ({ lat, lng })),
+        path: coordinates.map(([lat, lng]) => ({ lat, lng })),
         map,
         strokeColor: '#df684c',
         strokeWeight: 5,
@@ -95,15 +87,15 @@ export function GoogleRouteMap({ origin, destination, destinationLabel, onDestin
       });
 
       const bounds = new google.maps.LatLngBounds();
-      coordinates.forEach(([lng, lat]) => bounds.extend({ lat, lng }));
+      coordinates.forEach(([lat, lng]) => bounds.extend({ lat, lng }));
       map.fitBounds(bounds);
       const endpoint = coordinates[coordinates.length - 1];
-      const resolvedCoords = { lat: endpoint[1], lng: endpoint[0] };
+      const resolvedCoords = { lat: endpoint[0], lng: endpoint[1] };
       setResolvedDestination(resolvedCoords);
       destinationResolvedRef.current?.(resolvedCoords);
       setStatus('ready');
     }).catch(() => {
-      if (!cancelled) {
+      if (!cancelled && !controller.signal.aborted) {
         setErrorMessage('Google Maps could not load. Check the API key, billing, and localhost referrer restriction.');
         setStatus('error');
       }
@@ -111,15 +103,16 @@ export function GoogleRouteMap({ origin, destination, destinationLabel, onDestin
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [origin?.lat, origin?.lng, destinationLat, destinationLng, destinationQuery]);
+  }, [originLat, originLng, hasDestination, destinationLat, destinationLng, destinationQuery]);
 
   const googleMapsUrl = origin && resolvedDestination
     ? `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${resolvedDestination.lat},${resolvedDestination.lng}&travelmode=driving`
     : null;
 
   if (!googleMapsApiKey) {
-    return <div className="google-map-message">Add <code>VITE_GOOGLE_MAPS_API_KEY</code> to show Google Maps here.</div>;
+    return <div className="google-map-message">Add key to show Google Maps here.</div>;
   }
   if (!origin) {
     return <div className="google-map-message">Waiting for GPS to plan the route.</div>;
@@ -133,7 +126,7 @@ export function GoogleRouteMap({ origin, destination, destinationLabel, onDestin
       <div ref={mapElement} className="google-route-map" aria-label={`Route to ${destinationLabel ?? 'destination'}`} />
       <div className="google-map-status">
         {status === 'loading' && 'Planning route…'}
-        {status === 'ready' && 'OSRM route ready on Google Maps'}
+        {status === 'ready' && 'Route ready on Google Maps'}
         {status === 'error' && errorMessage}
       </div>
       {status === 'ready' && googleMapsUrl && (

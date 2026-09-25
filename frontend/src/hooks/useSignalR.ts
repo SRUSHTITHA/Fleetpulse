@@ -57,9 +57,7 @@ export function useSignalR({ token, onLocation, onAlert, onAlertRemoved }: UseSi
         }
       }
     }
-
     start();
-
     return () => {
       cancelled = true;
       connRef.current?.stop();

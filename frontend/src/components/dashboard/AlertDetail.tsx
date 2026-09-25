@@ -16,7 +16,7 @@ export function AlertDetail({ alert, onLocate, onDelete, onClose }: AlertDetailP
         <div className="modal-header">
           <h2>Alert Details</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">
-            ×
+            x
           </button>
         </div>
         <div className="modal-body">

@@ -40,8 +40,6 @@ body,
   overflow-y: auto;
 }
 
-/* ── Login ─────────────────────────────────────────────── */
-
 .login-page,
 .route-loading {
   display: flex;
@@ -270,8 +268,7 @@ body,
   flex: 1;
   overflow: hidden;
 }
-
-/* ── Sidebar (Vehicle List) ────────────────────────────── */
+/* Sidebar */
 
 .sidebar {
   width: 300px;

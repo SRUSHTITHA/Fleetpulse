@@ -5,8 +5,7 @@ import { formatDateTime } from '../../utils/helpers';
 import type { GeolocationState } from '../../hooks/useGeolocation';
 import { GoogleRouteMap } from '../map/GoogleRouteMap';
 
-interface DriverTripCardProps {
-  trip: TripDto;
+interface DriverTripCardProps { trip: TripDto; 
   location: GeolocationState | null;
   onEnded: () => void;
 }
@@ -17,7 +16,6 @@ export function DriverTripCard({ trip, location, onEnded }: DriverTripCardProps)
   const [elapsed, setElapsed] = useState(0);
   const initialSentRef = useRef(false);
 
-  // Elapsed timer from actual departure
   useEffect(() => {
     const start = trip.actualDeparture ? new Date(trip.actualDeparture).getTime() : Date.now();
     const timer = window.setInterval(() => {
@@ -26,12 +24,9 @@ export function DriverTripCard({ trip, location, onEnded }: DriverTripCardProps)
     return () => window.clearInterval(timer);
   }, [trip.actualDeparture]);
 
-  // Report a single location. The driver's geolocation hook updates `location`
-  // roughly every 30 s, so each pop of that state triggers one POST here.
   useEffect(() => {
     if (!location) return;
 
-    // Fire once immediately so we pick up the current fix without waiting a full cycle.
     if (!initialSentRef.current) {
       initialSentRef.current = true;
     }

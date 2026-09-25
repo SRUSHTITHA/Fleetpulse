@@ -17,12 +17,6 @@ function GoogleMark() {
   );
 }
 
-interface GoogleSignInSectionProps {
-  buttonRef: RefObject<HTMLDivElement | null>;
-  configured: boolean;
-  ready: boolean;
-}
-
 export function GoogleSignInSection({ buttonRef, configured, ready }: GoogleSignInSectionProps) {
   if (!ready) return null;
   return (
@@ -43,7 +37,7 @@ export function GoogleSignInSection({ buttonRef, configured, ready }: GoogleSign
       )}
       {!configured && (
         <div className="google-hint">
-          Not configured — set <code>GOOGLE_AUTH_CLIENT_ID</code> to enable.
+          Not configured — yet.
         </div>
       )}
     </>

@@ -6,6 +6,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DispatcherDashboard } from './pages/DispatcherDashboard';
 import { DriverView } from './pages/DriverView';
 import { AdminSettings } from './pages/AdminSettings';
+import { getHomeRouteForUser } from './utils/helpers';
 import type { ReactNode } from 'react';
 
 function RouteLoading() {
@@ -26,12 +27,6 @@ function RequireRole({
   if (!user) return <RouteLoading />;
   if (!allow.includes(user.role)) return <Navigate to={deniedRedirect(user.role)} replace />;
   return <>{children}</>;
-}
-
-function getHomeRouteForUser(user: { role?: string } | null | undefined): string {
-  if (user?.role === 'Driver') return '/driver';
-  if (user?.role === 'Admin') return '/admin';
-  return '/';
 }
 
 function HomeRedirect() {

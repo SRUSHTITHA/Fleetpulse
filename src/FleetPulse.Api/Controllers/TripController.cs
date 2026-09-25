@@ -10,7 +10,6 @@ namespace FleetPulse.Api.Controllers;
 public class TripController : ApiControllerBase
 {
     private readonly ITripService _tripService;
-
     public TripController(ITripService tripService)
     {
         _tripService = tripService;

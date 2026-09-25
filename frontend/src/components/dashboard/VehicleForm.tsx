@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { DriverDto } from '../../types';
+import type { DriverDto, VehicleInput } from '../../types';
 import { VehicleType } from '../../types';
 import { geocode } from '../../api/client';
 
@@ -13,15 +13,7 @@ const vehicleTypeLabels: Record<VehicleType, string> = {
 
 interface VehicleFormProps {
   drivers: DriverDto[];
-  onSave: (data: {
-    name: string;
-    licensePlate: string;
-    type: VehicleType;
-    isActive: boolean;
-    driverId?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-  }) => Promise<void>;
+  onSave: (data: VehicleInput) => Promise<void>;
   onCancel: () => void;
 }
 
