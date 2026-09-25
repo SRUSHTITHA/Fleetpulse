@@ -1,0 +1,103 @@
+name: fleetpulse
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: fleetpulse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fleetpulse
+      POSTGRES_USER: fleetpulse
+      POSTGRES_PASSWORD: fleetpulse_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleetpulse -d fleetpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Runs the full stack locally. Build images with `docker compose build`,
+  # start everything with `docker compose up -d`.
+  # - API:  http://localhost:8080  (Swagger at /swagger, hub at /hubs/location)
+  # - Web:  http://localhost:5173  (nginx serves the SPA and proxies /api + /hubs to api)
+
+  osrm:
+    build:
+      context: ./docker/osrm
+    container_name: fleetpulse-osrm
+    restart: unless-stopped
+    environment:
+      # Region used to build the routing graph on first start (downloads once, then cached).
+      # Default: Luxembourg (small + fast). Override for the demo area, e.g.:
+      #   OSRM_PBF_URL=https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf
+      #   OSRM_PBF_URL=https://download.geofabrik.de/asia/india-latest.osm.pbf   (large, needs RAM)
+      OSRM_PBF_URL: "${OSRM_PBF_URL:-https://download.geofabrik.de/europe/luxembourg-latest.osm.pbf}"
+    volumes:
+      - osrm-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/nearest/v1/driving/6.13,49.61 >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 20s
+
+  api:
+    build:
+      context: ./src
+      dockerfile: FleetPulse.Api/Dockerfile
+    container_name: fleetpulse-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=fleetpulse;Username=fleetpulse;Password=fleetpulse_dev"
+      SeedData__DemoData: "true"
+      # Self-hosted OSRM instance for trip route drawing (no public OSRM dependency).
+      # Leave GoogleMaps__ApiKey empty and this fills routing; with a Google key set,
+      # Google Directions is preferred and OSRM is the fallback.
+      Routing__BaseUrl: "http://osrm:5000"
+      # Optional: enable Google Roads API road-snapping for the route-deviation rule.
+      # Without a key the rule falls back to raw-GPS perpendicular-distance checks.
+      GoogleMaps__ApiKey: "${GOOGLE_MAPS_API_KEY:-}"
+      # Optional: Google OAuth Client ID (Web application) to enable Google Identity
+      # popup sign-in. New Google accounts are created as Driver; admins can change
+      # roles in Admin Settings.
+      GoogleAuth__ClientId: "${GOOGLE_AUTH_CLIENT_ID:-}"
+      # Optional: SMTP settings for "Forgot password" emails. Any free SMTP provider
+      # works (e.g. a Gmail app password, or SendGrid/Brevo/Resend free tiers).
+      # Leave empty to keep password reset disabled.
+      Smtp__Host: "${SMTP_HOST:-}"
+      Smtp__Port: "${SMTP_PORT:-587}"
+      Smtp__Username: "${SMTP_USERNAME:-}"
+      Smtp__Password: "${SMTP_PASSWORD:-}"
+      Smtp__From: "${SMTP_FROM:-}"
+      Smtp__FromName: "${SMTP_FROM_NAME:-FleetPulse}"
+      # Public URL of the web app, used in password-reset email links.
+      WebApp__BaseUrl: "${WEBAPP_BASE_URL:-http://localhost:5173}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      osrm:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_GOOGLE_MAPS_API_KEY: "${VITE_GOOGLE_MAPS_API_KEY:-}"
+    container_name: fleetpulse-web
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  osrm-data:

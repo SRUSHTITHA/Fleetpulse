@@ -1,0 +1,35 @@
+# --- .NET ---
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+artifacts/
+
+# --- Node / Frontend ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+.env.example
+appsettings.Local.json
+
+# --- Docker ---
+*.log
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+running.md
+structure.md
+architecture.md
+Running.md
+
