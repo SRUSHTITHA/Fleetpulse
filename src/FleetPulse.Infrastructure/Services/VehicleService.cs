@@ -162,6 +162,8 @@ public class VehicleService : IVehicleService
         if (target is null || !target.IsActive)
             return false;
 
+        // A vehicle can have only one active driver, and a driver can only be assigned to one
+        // vehicle at a time. Clear the old pairing before moving the target over.
         foreach (var driver in drivers.Where(d => d.VehicleId == vehicle.Id))
             driver.VehicleId = null;
         if (target.VehicleId != vehicle.Id)
