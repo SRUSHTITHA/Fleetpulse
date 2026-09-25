@@ -105,7 +105,7 @@ That's the only thing you need — no .NET, Node, or database installs.
 docker compose up -d --build
 
 # 2. Open the app
-#    http://localhost:5173
+#
 ```
 
 The first start takes a few minutes (it downloads images, compiles the code, and builds the
@@ -115,48 +115,3 @@ already on the map with two live alerts, so you can see the idea immediately.
 > On a fresh database, FleetPulse seeds demo users, vehicles, and one in-progress trip with
 > a real parked-vehicle trail — so the dispatcher dashboard shows activity on first load.
 
-### Demo accounts
-
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin | `admin@fleetpulse.com` | `Admin@123!` |
-| Dispatcher | `dispatcher@fleetpulse.com` | `Dispatcher@123!` |
-| Driver | `driver@fleetpulse.com` | `Driver@123!` |
-| Driver (demo) | `marina@fleetpulse.com` | `Driver@123!` |
-| Driver (demo) | `omar@fleetpulse.com` | `Driver@123!` |
-
----
-
-## Useful commands
-
-| I want to… | Command |
-| --- | --- |
-| See what is running | `docker compose ps` |
-| Watch logs | `docker compose logs -f api` (or `web`, `db`, `osrm`) |
-| Stop (keep data) | `docker compose down` |
-| Start again | `docker compose up -d` |
-| Rebuild after code changes | `docker compose up -d --build` |
-| Wipe all data & start fresh | `docker compose down -v` then `docker compose up -d --build` |
-| Check frontend | `cd frontend && npm run lint && npm run build` |
-
----
-
-## Project layout
-
-```
-├── frontend/     React app (pages, components, hooks, API client)
-├── src/          .NET backend (Api, Application, Infrastructure, Domain)
-├── docker/       Docker support files
-├── docs/         Architecture documentation & diagrams
-└── docker-compose.yml   One-file startup for the whole stack
-```
-
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the detailed diagrams.
-
----
-
-## Status
-
-Feature-complete: all core functionality is built and running — tracking, live
-map dashboards, driver flow, the rule engine with deduplication, rule settings, and a
-single-command Docker deployment.
